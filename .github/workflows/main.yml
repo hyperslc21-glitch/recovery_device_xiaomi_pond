@@ -1,0 +1,47 @@
+name: Build TWRP POCO C75 (pond/lake)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Bersihkan Ruang Penyimpanan Server
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h
+
+      - name: Instal Paket Pendukung
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 repo
+
+      - name: Unduh Source TWRP (Manifest 12.1)
+        run: |
+          mkdir -p ~/twrp && cd ~/twrp
+          git config --global user.name "hyperslc21-glitch"
+          git config --global user.email "hyperslc21-glitch@://github.com"
+          repo init --depth=1 -u https://github.com -b twrp-12.1
+          repo sync -c --force-sync --no-clone-bundle --no-tags -j$(nproc --all)
+
+      - name: Ambil Device Tree POCO C75 (pond)
+        run: |
+          git clone https://github.com ~/twrp/device/xiaomi/pond
+
+      - name: Mulai Proses Build TWRP
+        run: |
+          cd ~/twrp
+          export ALLOW_MISSING_DEPENDENCIES=true
+          source build/envsetup.sh
+          lunch twrp_pond-eng
+          mka vendorbootimage
+
+      - name: Upload Hasil Build (vendor_boot.img)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TWRP-POCO-C75-pond
+          path: ~/twrp/out/target/product/pond/vendor_boot.img
